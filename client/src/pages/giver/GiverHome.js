@@ -1,51 +1,176 @@
+
+// import React, { useState } from "react";
+// import { useNavigate } from "react-router-dom";
+// import GiverNav from "./GiverNav";
+
+// const GiverHome = () => {
+//   const navigate = useNavigate();
+//   const [status, setStatus] = useState("offers");
+
+//   const renderMessage = () => {
+//     switch (status) {
+//       case "complete":
+//         return (
+//           <div className="alert alert-success">
+//             ✅ You’ve already filled a sublease form!  
+//             <button
+//               className="btn btn-primary ms-2"
+//               onClick={() => navigate("/giver/form")}
+//             >
+//               Make Changes
+//             </button>
+//           </div>
+//         );
+//       case "partial":
+//         return (
+//           <div className="alert alert-warning">
+//             🕓 You have a partially completed sublease form.  
+//             <button
+//               className="btn btn-primary ms-2"
+//               onClick={() => navigate("/giver/form")}
+//             >
+//               Complete Form
+//             </button>
+//           </div>
+//         );
+//       case "offers":
+//         return (
+//           <div className="alert alert-info">
+//             🎉 Your sublease has offers!  
+//             <button
+//               className="btn btn-primary ms-2"
+//               onClick={() => navigate("/giver/offers")}
+//             >
+//               View Offers
+//             </button>
+//           </div>
+//         );
+//       default:
+//         return <div className="alert alert-secondary">Loading your data...</div>;
+//     }
+//   };
+
+//   return (
+//     <div className="container py-4">
+//       <GiverNav />
+//       <div className="text-center mt-4">
+//         <h2 className="mb-4">Welcome, Sublease Giver!</h2>
+//         {renderMessage()}
+
+//         <div className="mt-5">
+//           <h5>🔄 Change Status (for testing):</h5>
+//           <div className="btn-group mt-2">
+//             <button onClick={() => setStatus("complete")} className="btn btn-outline-success">
+//               Complete
+//             </button>
+//             <button onClick={() => setStatus("partial")} className="btn btn-outline-warning">
+//               Partial
+//             </button>
+//             <button onClick={() => setStatus("offers")} className="btn btn-outline-info">
+//               Offers
+//             </button>
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default GiverHome;
+// src/pages/giver/GiverHome.js
 import React, { useState } from "react";
-import SubleaseForm from "../../components/SubleaseForm";
-import SubleaseSummary from "../../components/SubleaseSummary";
+import { useNavigate } from "react-router-dom";
+import GiverNav from "./GiverNav";
+import { Container, Row, Col, Card } from "react-bootstrap";
 
 const GiverHome = () => {
-  const [sublease, setSublease] = useState(null);
-  const [editing, setEditing] = useState(true);
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("offers"); // can be "complete", "partial", "offers"
 
-  const handleSave = (data) => {
-    setSublease(data);
-    setEditing(false);
-  };
+  const renderMessage = () => {
+    switch (status) {
+      case "complete":
+        return (
+          <Card className="shadow-lg border-0 p-4 text-center">
+            <Card.Body>
+              <h4 className="text-success fw-bold">
+                ✅ You’ve already filled your sublease form!
+              </h4>
+              <p className="mt-2">
+                Click below if you wish to make any changes or updates.
+              </p>
+              <button
+                className="btn btn-primary mt-3 px-4"
+                onClick={() => navigate("/giver/form")}
+              >
+                Edit Form
+              </button>
+            </Card.Body>
+          </Card>
+        );
 
-  const handleEdit = () => {
-    setEditing(true);
-  };
+      case "partial":
+        return (
+          <Card className="shadow-lg border-0 p-4 text-center">
+            <Card.Body>
+              <h4 className="text-warning fw-bold">
+                🕓 You have a partially filled sublease form.
+              </h4>
+              <p className="mt-2">
+                Complete it to make your sublease visible to others.
+              </p>
+              <button
+                className="btn btn-warning mt-3 px-4"
+                onClick={() => navigate("/giver/form")}
+              >
+                Complete Form
+              </button>
+            </Card.Body>
+          </Card>
+        );
 
-  const handleClear = () => {
-    setSublease(null);
-    setEditing(true);
+      case "offers":
+        return (
+          <Card className="shadow-lg border-0 p-4 text-center">
+            <Card.Body>
+              <h4 className="text-info fw-bold">
+                🎉 Great news! You’ve received new offers.
+              </h4>
+              <p className="mt-2">
+                Review and respond to them below.
+              </p>
+              <button
+                className="btn btn-info mt-3 px-4 text-white"
+                onClick={() => navigate("/giver/offers")}
+              >
+                View Offers
+              </button>
+            </Card.Body>
+          </Card>
+        );
+
+      default:
+        return <p>Loading...</p>;
+    }
   };
 
   return (
-    <div
-      className="d-flex justify-content-center align-items-start"
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #74ebd5 0%, #ACB6E5 100%)",
-        paddingTop: "50px",
-        paddingBottom: "50px",
-      }}
-    >
-      <div
-        className="card shadow p-4"
-        style={{ maxWidth: "800px", width: "100%", borderRadius: "15px" }}
-      >
-        <h2 className="text-center mb-4 text-primary">Sublease Giver Dashboard</h2>
-
-        {sublease && !editing ? (
-          <SubleaseSummary
-            data={sublease}
-            onEdit={handleEdit}
-            onClear={handleClear}
-          />
-        ) : (
-          <SubleaseForm initialData={sublease} onSave={handleSave} />
-        )}
-      </div>
+    <div className="home-background min-vh-100 d-flex flex-column">
+      <GiverNav status={status} />
+      <Container className="flex-grow-1 d-flex flex-column justify-content-center align-items-center">
+        <h1 className="display-5 fw-bold text-light mb-4">Welcome, Sublease Giver</h1>
+        <Row className="justify-content-center w-100">
+          <Col md={8} lg={6}>{renderMessage()}</Col>
+        </Row>
+        <div className="mt-5">
+          <h6 className="text-white-50 mb-3">Change Status (for testing)</h6>
+          <div className="btn-group">
+            <button onClick={() => setStatus("complete")} className="btn btn-outline-success">Complete</button>
+            <button onClick={() => setStatus("partial")} className="btn btn-outline-warning">Partial</button>
+            <button onClick={() => setStatus("offers")} className="btn btn-outline-info">Offers</button>
+          </div>
+        </div>
+      </Container>
     </div>
   );
 };
