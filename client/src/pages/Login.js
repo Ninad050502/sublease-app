@@ -118,6 +118,7 @@ const Login = () => {
       if (res.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.role);
+        localStorage.setItem("userId", data._id);
 
         if (data.role === "giver") navigate("/giver");
         else navigate("/taker");
