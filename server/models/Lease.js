@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+// server/models/Lease.js
+import mongoose from "mongoose";
 
 const leaseSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -9,6 +10,8 @@ const leaseSchema = new mongoose.Schema({
   giver: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   takenBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   isAvailable: { type: Boolean, default: true },
+  isComplete: { type: Boolean, default: false },     // ← added
+  offers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Offer" }], // ← added
 });
 
-module.exports = mongoose.model("Lease", leaseSchema);
+export default mongoose.model("Lease", leaseSchema);
