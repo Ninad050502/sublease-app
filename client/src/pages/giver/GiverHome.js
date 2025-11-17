@@ -1,104 +1,81 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
 import GiverNav from "./GiverNav";
-import { Container, Row, Col, Card, Spinner } from "react-bootstrap";
 
 const GiverHome = () => {
-  const navigate = useNavigate();
-  const [status, setStatus] = useState("");
+  const [leases, setLeases] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const userId = localStorage.getItem("userId");
-        const res = await fetch(`http://localhost:5000/api/giver/${userId}/status`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        console.log("📥 Giver status:", data);
-        setStatus(data.status);
-      } catch (err) {
-        console.error("Error fetching giver status:", err);
-        setError("Failed to load status.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStatus();
-  }, []);
-
-  const renderMessage = () => {
-    switch (status) {
-      case "complete":
-        return (
-          <Card className="shadow-lg border-0 p-4 text-center">
-            <Card.Body>
-              <h4 className="text-success fw-bold">
-                ✅ You’ve already filled your sublease form!
-              </h4>
-              <p className="mt-2">Click below if you wish to make any changes.</p>
-              <button className="btn btn-primary mt-3 px-4" onClick={() => navigate("/giver/form")}>
-                Edit Form
-              </button>
-            </Card.Body>
-          </Card>
-        );
-
-      case "partial":
-        return (
-          <Card className="shadow-lg border-0 p-4 text-center">
-            <Card.Body>
-              <h4 className="text-warning fw-bold">🕓 You have a partially filled form.</h4>
-              <p className="mt-2">Complete it to make your sublease visible.</p>
-              <button className="btn btn-warning mt-3 px-4" onClick={() => navigate("/giver/form")}>
-                Complete Form
-              </button>
-            </Card.Body>
-          </Card>
-        );
-
-      case "offers":
-        return (
-          <Card className="shadow-lg border-0 p-4 text-center">
-            <Card.Body>
-              <h4 className="text-info fw-bold">🎉 Great news! You’ve received new offers.</h4>
-              <p className="mt-2">Review and respond to them below.</p>
-              <button className="btn btn-info mt-3 px-4 text-white" onClick={() => navigate("/giver/offers")}>
-                View Offers
-              </button>
-            </Card.Body>
-          </Card>
-        );
-
-      default:
-        return <p>Loading status...</p>;
+  const fetchMyLeases = async () => {
+    try {
+      const giverId = localStorage.getItem("userId");
+      const res = await fetch(`/api/giver/my-leases/${giverId}`);
+      const data = await res.json();
+      setLeases(data);
+    } catch (err) {
+      console.error("Error fetching giver leases:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading)
+  useEffect(() => {
+    fetchMyLeases();
+  }, []);
+
+  const handleDelete = async (leaseId) => {
+    if (!window.confirm("Are you sure you want to delete this listing?")) return;
+    try {
+      const res = await fetch(`/api/giver/delete/${leaseId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete lease");
+      alert("Listing deleted.");
+      fetchMyLeases();
+    } catch (err) {
+      console.error("Error deleting lease:", err);
+      alert("Could not delete listing.");
+    }
+  };
+
+  if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: "100vh" }}>
         <Spinner animation="border" />
       </div>
     );
-
-  if (error)
-    return (
-      <Container className="text-center mt-5">
-        <h5 className="text-danger">{error}</h5>
-      </Container>
-    );
+  }
 
   return (
-    <div className="home-background min-vh-100 d-flex flex-column">
-      <GiverNav status={status} />
-      <Container className="flex-grow-1 d-flex flex-column justify-content-center align-items-center">
-        <h1 className="display-5 fw-bold text-light mb-4">Welcome, Sublease Giver</h1>
-        <Row className="justify-content-center w-100">
-          <Col md={8} lg={6}>{renderMessage()}</Col>
-        </Row>
+    <div className="min-vh-100 d-flex flex-column">
+      <GiverNav />
+      <Container className="py-4">
+        <h3 className="mb-4">My Listings</h3>
+        {leases.length === 0 ? (
+          <p className="text-muted">You have no listings yet. Create one using "Add Listing".</p>
+        ) : (
+          <Row>
+            {leases.map((lease) => (
+              <Col md={4} key={lease._id} className="mb-3">
+                <Card className="shadow-sm">
+                  <Card.Body>
+                    <Card.Title>{lease.title}</Card.Title>
+                    <Card.Text>
+                      <strong>Location:</strong> {lease.location} <br />
+                      <strong>Rent:</strong> ${lease.amount}/month <br />
+                      <strong>Duration:</strong> {lease.duration} months
+                    </Card.Text>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => handleDelete(lease._id)}
+                    >
+                      Delete
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        )}
       </Container>
     </div>
   );
