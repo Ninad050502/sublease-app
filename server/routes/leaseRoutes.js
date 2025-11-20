@@ -48,24 +48,40 @@ router.get("/:id", async (req, res) => {
 
 router.post("/contact/:leaseId", async (req, res) => {
   try {
-    const { takerId, takerEmail } = req.body;
+    const { takerEmail, takerId } = req.body;
 
-    if (!takerId || !takerEmail) {
+    if (!takerEmail || !takerId) {
       return res.status(400).json({ message: "Missing taker information" });
     }
 
     const lease = await Lease.findById(req.params.leaseId).populate("giver");
-
     if (!lease) return res.status(404).json({ message: "Lease not found" });
 
-    // Add notification
-    lease.giver.notifications.push({
+    const giver = lease.giver;
+
+    // Check EXACT duplicate (safer)
+    const alreadyExists = giver.notifications.some(
+      (note) =>
+        note.message.includes(takerEmail) &&
+        note.message.includes(`"${lease.title}"`)
+    );
+
+    if (alreadyExists) {
+      return res.json({
+        alreadySent: true,
+        message: "Notification already sent earlier",
+      });
+    }
+
+    // Create notification
+    giver.notifications.push({
       message: `${takerEmail} is interested in your listing "${lease.title}".`,
+      takerId
     });
 
-    await lease.giver.save();
+    await giver.save();
 
-    res.json({ success: true, message: "Notification sent to giver!" });
+    return res.json({ success: true, message: "Notification sent to giver!" });
   } catch (err) {
     console.error("❌ Error sending notification:", err);
     res.status(500).json({ message: "Server error" });

@@ -1,13 +1,31 @@
 import express from "express";
+import multer from "multer";
+import path from "path";
 import Lease from "../models/Lease.js";
 import User from "../models/User.js";
 
 const router = express.Router();
 
-/* -----------------------------------------------------
-   1) CREATE NEW LISTING
------------------------------------------------------ */
-router.post("/create", async (req, res) => {
+/* ======================================================
+   Multer Storage: Save photos to /uploads
+====================================================== */
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads");
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+/* ======================================================
+   CREATE NEW LISTING WITH MULTIPLE PHOTOS
+   POST /api/giver/create
+====================================================== */
+router.post("/create", upload.array("photos", 10), async (req, res) => {
   try {
     const { title, location, amount, duration, description, giverId } = req.body;
 
@@ -15,120 +33,95 @@ router.post("/create", async (req, res) => {
       return res.status(400).json({ message: "Missing giverId" });
     }
 
-    // 1) Create Lease
-    const lease = await Lease.create({
+    const photoPaths =
+      req.files?.map((file) => "/uploads/" + file.filename) || [];
+
+    // Create lease
+    const lease = new Lease({
       title,
       location,
-      amount,
-      duration,
+      amount: Number(amount),
+      duration: Number(duration),
       description,
       giver: giverId,
+      photos: photoPaths,
     });
 
-    console.log("✅ Lease created:", lease._id);
+    await lease.save();
 
-    // 2) Add lease reference to User.listings
+    // Push lease into giver listings
     await User.findByIdAndUpdate(giverId, {
       $push: { listings: lease._id },
     });
 
-    res.status(201).json({
-      message: "Lease created successfully",
-      lease,
-    });
-
+    res.status(201).json({ success: true, lease });
   } catch (err) {
-    console.error("🔥 Error creating lease:", err);
+    console.error("Error creating lease:", err);
     res.status(500).json({ message: "Error creating lease" });
   }
 });
 
-/* -----------------------------------------------------
-   2) UPDATE LISTING
------------------------------------------------------ */
-router.put("/update/:leaseId", async (req, res) => {
-  try {
-    const { leaseId } = req.params;
-    const updateFields = req.body;
-
-    const lease = await Lease.findByIdAndUpdate(leaseId, updateFields, { new: true });
-
-    if (!lease) return res.status(404).json({ message: "Lease not found" });
-
-    res.json({ message: "Lease updated successfully", lease });
-  } catch (err) {
-    console.error("🔥 Error updating lease:", err);
-    res.status(500).json({ message: "Error updating lease" });
-  }
-});
-
-/* -----------------------------------------------------
-   3) DELETE LISTING
------------------------------------------------------ */
-router.delete("/delete/:leaseId", async (req, res) => {
-  try {
-    const { leaseId } = req.params;
-
-    const lease = await Lease.findByIdAndDelete(leaseId);
-    if (!lease) return res.status(404).json({ message: "Lease not found" });
-
-    // Remove from giver listings
-    await User.findByIdAndUpdate(lease.giver, {
-      $pull: { listings: leaseId },
-    });
-
-    res.json({ message: "Lease deleted successfully" });
-  } catch (err) {
-    console.error("🔥 Error deleting lease:", err);
-    res.status(500).json({ message: "Error deleting lease" });
-  }
-});
-
-/* -----------------------------------------------------
-   4) GET GIVER'S LISTINGS
------------------------------------------------------ */
+/* ======================================================
+   GET ALL LISTINGS FOR A GIVER
+   GET /api/giver/my-leases/:giverId
+====================================================== */
 router.get("/my-leases/:giverId", async (req, res) => {
   try {
-    const leases = await Lease.find({ giver: req.params.giverId })
-      .sort({ createdAt: -1 });
-
+    const leases = await Lease.find({ giver: req.params.giverId }).sort({
+      createdAt: -1,
+    });
     res.json(leases);
   } catch (err) {
-    console.error("🔥 Error fetching leases:", err);
+    console.error("Error fetching leases:", err);
     res.status(500).json({ message: "Error fetching leases" });
   }
 });
 
-/* -----------------------------------------------------
-   5) NOTIFICATIONS
------------------------------------------------------ */
-// Get notifications
+/* ======================================================
+   GET NOTIFICATIONS
+   GET /api/giver/:giverId/notifications
+====================================================== */
 router.get("/:giverId/notifications", async (req, res) => {
   try {
     const giver = await User.findById(req.params.giverId);
-    if (!giver) return res.status(404).json({ message: "Giver not found" });
 
-    const sorted = giver.notifications.sort((a, b) => b.createdAt - a.createdAt);
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
+
+    const sorted = [...giver.notifications].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
     res.json(sorted);
   } catch (err) {
-    console.error("🔥 Error fetching notifications:", err);
+    console.error("Error fetching notifications:", err);
     res.status(500).json({ message: "Failed to fetch notifications" });
   }
 });
 
-// Mark notifications as read
+/* ======================================================
+   MARK ALL NOTIFICATIONS AS READ
+   POST /api/giver/:giverId/notifications/mark-read
+====================================================== */
 router.post("/:giverId/notifications/mark-read", async (req, res) => {
   try {
     const giver = await User.findById(req.params.giverId);
-    if (!giver) return res.status(404).json({ message: "Giver not found" });
 
-    giver.notifications.forEach((n) => (n.isRead = true));
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
+
+    giver.notifications.forEach((n) => {
+      n.isRead = true;
+    });
+
     await giver.save();
 
     res.json({ success: true });
   } catch (err) {
-    console.error("🔥 Error marking notifications:", err);
-    res.status(500).json({ message: "Failed to mark notifications read" });
+    console.error("Error marking notifications read:", err);
+    res.status(500).json({ message: "Failed to mark as read" });
   }
 });
 
