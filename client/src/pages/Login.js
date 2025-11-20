@@ -23,10 +23,10 @@ const Login = () => {
 
       const data = await res.json();
       if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-        localStorage.setItem("userId", data._id);
-        localStorage.setItem("email", data.email);
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("role", data.role);
+        sessionStorage.setItem("userId", data._id);
+        sessionStorage.setItem("email", data.email);
 
         if (data.role === "giver") navigate("/giver");
         else navigate("/taker");
@@ -71,7 +71,7 @@ const Login = () => {
               marginBottom: "8px",
             }}
           >
-            Welcome Back
+            Sublease Finder
           </h2>
           <p className="text-muted">Sign in to your account</p>
         </div>

@@ -39,10 +39,10 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
-  const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role");
+  const token = sessionStorage.getItem("token");
+  const role = sessionStorage.getItem("role");
 
-  // Still loading localStorage
+  // Still loading sessionStorage
   if (token === null || role === null) {
     return null; // Prevent early redirect
   }

@@ -164,7 +164,7 @@ const GiverNav = () => {
 
   const loadNotifications = async () => {
     try {
-      const userId = localStorage.getItem("userId");
+      const userId = sessionStorage.getItem("userId");
       if (!userId) return;
 
       const res = await fetch(`http://localhost:5000/api/giver/${userId}/notifications`);
@@ -179,7 +179,7 @@ const GiverNav = () => {
 
   const checkListingStatus = async () => {
     try {
-      const userId = localStorage.getItem("userId");
+      const userId = sessionStorage.getItem("userId");
       if (!userId) return;
 
       const res = await fetch(`http://localhost:5000/api/giver/my-leases/${userId}`);
@@ -197,7 +197,7 @@ const GiverNav = () => {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

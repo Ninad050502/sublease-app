@@ -7,7 +7,7 @@ const LeaseTakerNav = () => {
   const location = useLocation();
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

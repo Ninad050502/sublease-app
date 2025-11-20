@@ -8,7 +8,7 @@ const GiverHome = () => {
 
   const fetchMyLeases = async () => {
     try {
-      const giverId = localStorage.getItem("userId");
+      const giverId = sessionStorage.getItem("userId");
       const res = await fetch(`http://localhost:5000/api/giver/my-leases/${giverId}`);
       const data = await res.json();
       setLeases(data);

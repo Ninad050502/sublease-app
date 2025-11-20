@@ -115,8 +115,8 @@ const LeaseCard = ({ lease }) => {
 
   const handleContact = async () => {
     try {
-      const takerEmail = localStorage.getItem("email");
-      const takerId = localStorage.getItem("userId");
+      const takerEmail = sessionStorage.getItem("email");
+      const takerId = sessionStorage.getItem("userId");
 
       if (!takerEmail || !takerId) {
         alert("Please log in again");

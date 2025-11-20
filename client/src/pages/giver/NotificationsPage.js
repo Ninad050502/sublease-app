@@ -118,7 +118,7 @@ const NotificationsPage = () => {
 
   useEffect(() => {
     const fetchNotifications = async () => {
-      const userId = localStorage.getItem("userId");
+      const userId = sessionStorage.getItem("userId");
       if (!userId) return;
 
       const res = await fetch(`http://localhost:5000/api/giver/${userId}/notifications`);

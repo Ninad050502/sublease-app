@@ -175,7 +175,7 @@ const GiverForm = () => {
   useEffect(() => {
     const checkExistingListing = async () => {
       try {
-        const userId = localStorage.getItem("userId");
+        const userId = sessionStorage.getItem("userId");
         if (!userId) {
           navigate("/login");
           return;
@@ -217,7 +217,7 @@ const GiverForm = () => {
     setLoading(true);
 
     try {
-      const giverId = localStorage.getItem("userId");
+      const giverId = sessionStorage.getItem("userId");
       if (!giverId) {
         alert("Login expired. Please log in again.");
         navigate("/login");
