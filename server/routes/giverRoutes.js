@@ -24,6 +24,7 @@ const upload = multer({ storage });
 /* ======================================================
    CREATE NEW LISTING WITH MULTIPLE PHOTOS
    POST /api/giver/create
+   NOTE: A giver can only have ONE listing at a time
 ====================================================== */
 router.post("/create", upload.array("photos", 10), async (req, res) => {
   try {
@@ -31,6 +32,15 @@ router.post("/create", upload.array("photos", 10), async (req, res) => {
 
     if (!giverId) {
       return res.status(400).json({ message: "Missing giverId" });
+    }
+
+    // Check if giver already has a listing
+    const existingLeases = await Lease.find({ giver: giverId });
+    if (existingLeases.length > 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "You already have an active listing. Please delete your existing listing before creating a new one." 
+      });
     }
 
     const photoPaths =
@@ -74,6 +84,35 @@ router.get("/my-leases/:giverId", async (req, res) => {
   } catch (err) {
     console.error("Error fetching leases:", err);
     res.status(500).json({ message: "Error fetching leases" });
+  }
+});
+
+/* ======================================================
+   DELETE A LEASE LISTING
+   DELETE /api/giver/delete/:leaseId
+====================================================== */
+router.delete("/delete/:leaseId", async (req, res) => {
+  try {
+    const lease = await Lease.findById(req.params.leaseId);
+    
+    if (!lease) {
+      return res.status(404).json({ message: "Lease not found" });
+    }
+
+    const giverId = lease.giver;
+
+    // Remove lease from database
+    await Lease.findByIdAndDelete(req.params.leaseId);
+
+    // Remove lease from giver's listings array
+    await User.findByIdAndUpdate(giverId, {
+      $pull: { listings: req.params.leaseId },
+    });
+
+    res.json({ success: true, message: "Lease deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting lease:", err);
+    res.status(500).json({ message: "Error deleting lease" });
   }
 });
 

@@ -320,20 +320,65 @@ const LeaseTakerHome = () => {
   const handleSearchClick = () => navigate("/available-leases");
 
   return (
-    <>
+    <div style={{ background: "rgba(255, 255, 255, 0.95)", minHeight: "100vh" }}>
       <LeaseTakerNav />
 
-      <Container className="mt-5 text-center">
-        <h3>Welcome to the Sublease Finder</h3>
-        <p>
-          Browse available subleases and contact the giver directly.
-        </p>
+      <Container className="py-5 fade-in">
+        <div className="text-center" style={{ maxWidth: "600px", margin: "0 auto" }}>
+          <div style={{ fontSize: "5rem", marginBottom: "24px" }}>🏠</div>
+          <h2
+            style={{
+              fontWeight: "700",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              marginBottom: "16px",
+            }}
+          >
+            Welcome to Sublease Finder
+          </h2>
+          <p className="text-muted mb-4" style={{ fontSize: "1.1rem" }}>
+            Discover your perfect sublease! Browse available listings, view detailed information,
+            and connect directly with property owners.
+          </p>
 
-        <Button variant="primary" onClick={handleSearchClick}>
-          View Available Leases
-        </Button>
+          <div className="card shadow-sm mb-4" style={{ background: "rgba(102, 126, 234, 0.05)", border: "none" }}>
+            <div className="card-body p-4">
+              <h5 className="mb-3" style={{ color: "#333", fontWeight: "600" }}>
+                How it works:
+              </h5>
+              <div className="text-start" style={{ maxWidth: "400px", margin: "0 auto" }}>
+                <div className="mb-3">
+                  <strong style={{ color: "#667eea" }}>1. 🔍 Browse</strong>
+                  <p className="mb-0 text-muted">Search listings by location and filter by price</p>
+                </div>
+                <div className="mb-3">
+                  <strong style={{ color: "#667eea" }}>2. 👀 View Details</strong>
+                  <p className="mb-0 text-muted">See photos, descriptions, and all property details</p>
+                </div>
+                <div>
+                  <strong style={{ color: "#667eea" }}>3. 📧 Contact</strong>
+                  <p className="mb-0 text-muted">Send a notification to the giver expressing your interest</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="primary"
+            onClick={handleSearchClick}
+            size="lg"
+            style={{
+              fontWeight: "600",
+              padding: "14px 32px",
+              fontSize: "1.1rem",
+            }}
+          >
+            🔎 Start Browsing Listings
+          </Button>
+        </div>
       </Container>
-    </>
+    </div>
   );
 };
 
