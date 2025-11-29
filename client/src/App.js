@@ -73,6 +73,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import RedirectToUserRoute from "./components/RedirectToUserRoute";
 
 // Giver pages
 import GiverHome from "./pages/giver/GiverHome";
@@ -91,9 +92,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* GIVER ROUTES */}
+        {/* USER-SPECIFIC ROUTES - Username-based */}
+        {/* Giver routes */}
         <Route
-          path="/giver"
+          path="/:username/listings"
           element={
             <ProtectedRoute allowedRoles={["giver"]}>
               <GiverHome />
@@ -102,7 +104,7 @@ function App() {
         />
 
         <Route
-          path="/giver/form"
+          path="/:username/listings/create"
           element={
             <ProtectedRoute allowedRoles={["giver"]}>
               <GiverForm />
@@ -111,7 +113,7 @@ function App() {
         />
 
         <Route
-          path="/giver/notifications"
+          path="/:username/notifications"
           element={
             <ProtectedRoute allowedRoles={["giver"]}>
               <NotificationsPage />
@@ -119,9 +121,9 @@ function App() {
           }
         />
 
-        {/* TAKER ROUTES */}
+        {/* Taker routes */}
         <Route
-          path="/taker"
+          path="/:username/home"
           element={
             <ProtectedRoute allowedRoles={["taker"]}>
               <LeaseTakerHome />
@@ -130,13 +132,20 @@ function App() {
         />
 
         <Route
-          path="/available-leases"
+          path="/:username/browse"
           element={
             <ProtectedRoute allowedRoles={["taker"]}>
               <AvailableLeases />
             </ProtectedRoute>
           }
         />
+
+        {/* Legacy routes - redirect to username-based routes */}
+        <Route path="/giver" element={<RedirectToUserRoute />} />
+        <Route path="/giver/form" element={<RedirectToUserRoute />} />
+        <Route path="/giver/notifications" element={<RedirectToUserRoute />} />
+        <Route path="/taker" element={<RedirectToUserRoute />} />
+        <Route path="/available-leases" element={<RedirectToUserRoute />} />
 
         {/* DEFAULT → Redirect to Login */}
         <Route path="*" element={<Login />} />

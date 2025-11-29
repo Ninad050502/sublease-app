@@ -193,6 +193,20 @@ const LeaseCard = ({ lease }) => {
               <i className="bi bi-calendar-check me-2" style={{ color: "#667eea" }}></i>
               <strong>Duration:</strong> {lease.duration} {lease.duration === 1 ? "month" : "months"}
             </div>
+            {lease.startDate && lease.endDate && (
+              <div className="mb-2">
+                <i className="bi bi-calendar-range me-2" style={{ color: "#667eea" }}></i>
+                <strong>Available:</strong> {new Date(lease.startDate).toLocaleDateString("en-US", { 
+                  month: "short", 
+                  day: "numeric", 
+                  year: "numeric" 
+                })} - {new Date(lease.endDate).toLocaleDateString("en-US", { 
+                  month: "short", 
+                  day: "numeric", 
+                  year: "numeric" 
+                })}
+              </div>
+            )}
           </Card.Text>
           <Button
             variant="primary"
@@ -275,6 +289,23 @@ const LeaseCard = ({ lease }) => {
                 {lease.duration} {lease.duration === 1 ? "month" : "months"}
               </p>
             </div>
+
+            {lease.startDate && lease.endDate && (
+              <div className="mb-3">
+                <strong style={{ color: "#667eea" }}>📆 Available Dates:</strong>
+                <p className="mb-0" style={{ fontSize: "1.1rem", color: "#333" }}>
+                  {new Date(lease.startDate).toLocaleDateString("en-US", { 
+                    month: "long", 
+                    day: "numeric", 
+                    year: "numeric" 
+                  })} - {new Date(lease.endDate).toLocaleDateString("en-US", { 
+                    month: "long", 
+                    day: "numeric", 
+                    year: "numeric" 
+                  })}
+                </p>
+              </div>
+            )}
 
             {lease.description && (
               <div className="mb-3">

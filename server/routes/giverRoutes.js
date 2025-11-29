@@ -28,10 +28,32 @@ const upload = multer({ storage });
 ====================================================== */
 router.post("/create", upload.array("photos", 10), async (req, res) => {
   try {
-    const { title, location, amount, duration, description, giverId } = req.body;
+    const { title, location, amount, duration, startDate, endDate, description, giverId } = req.body;
 
     if (!giverId) {
       return res.status(400).json({ message: "Missing giverId" });
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start date and end date are required" });
+    }
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: "Invalid date format" });
+    }
+
+    if (start < today) {
+      return res.status(400).json({ message: "Start date cannot be in the past" });
+    }
+
+    if (end <= start) {
+      return res.status(400).json({ message: "End date must be after start date" });
     }
 
     // Check if giver already has a listing
@@ -52,6 +74,8 @@ router.post("/create", upload.array("photos", 10), async (req, res) => {
       location,
       amount: Number(amount),
       duration: Number(duration),
+      startDate: start,
+      endDate: end,
       description,
       giver: giverId,
       photos: photoPaths,

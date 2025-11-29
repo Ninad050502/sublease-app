@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 const Register = () => {
   const [role, setRole] = useState("taker");
   const [form, setForm] = useState({
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -28,13 +29,29 @@ const Register = () => {
       const res = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.email, password: form.password, role }),
+        body: JSON.stringify({ 
+          username: form.username, 
+          email: form.email, 
+          password: form.password, 
+          role 
+        }),
       });
 
       const data = await res.json();
       if (res.ok) {
-        alert("Registration successful! Please login.");
-        navigate("/login");
+        // Automatically log in the user after registration
+        sessionStorage.setItem("token", data.token);
+        sessionStorage.setItem("role", data.role);
+        sessionStorage.setItem("userId", data._id);
+        sessionStorage.setItem("email", data.email);
+        sessionStorage.setItem("username", data.username);
+
+        // Redirect to appropriate page based on role
+        if (data.role === "giver") {
+          navigate(`/${data.username}/listings`);
+        } else {
+          navigate(`/${data.username}/browse`);
+        }
       } else {
         alert(data.message || "Error during registration.");
       }
@@ -43,7 +60,7 @@ const Register = () => {
       alert("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
-      setForm({ email: "", password: "", confirmPassword: "" });
+      setForm({ username: "", email: "", password: "", confirmPassword: "" });
       setRole("taker");
     }
   };
@@ -57,7 +74,7 @@ const Register = () => {
       }}
     >
       <div
-        className="card shadow-lg"
+        className="card shadow-lg search-card"
         style={{
           maxWidth: "500px",
           width: "100%",
@@ -83,6 +100,25 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label className="form-label fw-semibold" style={{ color: "#333" }}>
+              Username *
+            </label>
+            <input
+              type="text"
+              className="form-control"
+              name="username"
+              value={form.username}
+              onChange={handleChange}
+              placeholder="e.g., johndoe123"
+              required
+              style={{ fontSize: "16px" }}
+              pattern="[a-z0-9_-]+"
+              title="Only lowercase letters, numbers, hyphens, and underscores allowed"
+            />
+            <small className="text-muted">3-30 characters, lowercase letters, numbers, hyphens, and underscores only</small>
+          </div>
+
           <div className="mb-3">
             <label className="form-label fw-semibold" style={{ color: "#333" }}>
               Email Address

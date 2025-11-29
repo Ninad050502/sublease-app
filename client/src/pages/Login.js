@@ -27,9 +27,14 @@ const Login = () => {
         sessionStorage.setItem("role", data.role);
         sessionStorage.setItem("userId", data._id);
         sessionStorage.setItem("email", data.email);
+        sessionStorage.setItem("username", data.username);
 
-        if (data.role === "giver") navigate("/giver");
-        else navigate("/taker");
+        // Redirect to username-based routes
+        if (data.role === "giver") {
+          navigate(`/${data.username}/listings`);
+        } else {
+          navigate(`/${data.username}/browse`);
+        }
       } else {
         alert(data.message || "Invalid credentials");
       }
@@ -51,7 +56,7 @@ const Login = () => {
       }}
     >
       <div
-        className="card shadow-lg"
+        className="card shadow-lg search-card"
         style={{
           maxWidth: "450px",
           width: "100%",

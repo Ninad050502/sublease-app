@@ -162,6 +162,8 @@ const GiverForm = () => {
     location: "",
     amount: "",
     duration: "",
+    startDate: "",
+    endDate: "",
     description: "",
   });
 
@@ -186,7 +188,12 @@ const GiverForm = () => {
         
         if (data.length > 0) {
           alert("You already have an active listing. Please delete your existing listing before creating a new one.");
-          navigate("/giver");
+          const username = sessionStorage.getItem("username");
+          if (username) {
+            navigate(`/${username}/listings`);
+          } else {
+            navigate("/login");
+          }
           return;
         }
       } catch (err) {
@@ -199,8 +206,56 @@ const GiverForm = () => {
     checkExistingListing();
   }, [navigate]);
 
+  const calculateDuration = (startDate, endDate) => {
+    if (!startDate || !endDate) return "";
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (end <= start) return "";
+    
+    // Calculate months difference more accurately
+    const startYear = start.getFullYear();
+    const startMonth = start.getMonth();
+    const endYear = end.getFullYear();
+    const endMonth = end.getMonth();
+    
+    let months = (endYear - startYear) * 12 + (endMonth - startMonth);
+    
+    // If end day is before start day, it's not a full month
+    if (end.getDate() < start.getDate()) {
+      months--;
+    }
+    
+    // Add 1 to include both start and end months
+    return months + 1;
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
+    
+    // Auto-calculate duration when dates change
+    if (name === "startDate" || name === "endDate") {
+      if (updatedFormData.startDate && updatedFormData.endDate) {
+        const start = new Date(updatedFormData.startDate);
+        const end = new Date(updatedFormData.endDate);
+        
+        if (end <= start) {
+          updatedFormData.duration = "";
+          if (name === "endDate") {
+            alert("End date must be after start date");
+          }
+        } else {
+          const duration = calculateDuration(updatedFormData.startDate, updatedFormData.endDate);
+          updatedFormData.duration = duration > 0 ? duration : "";
+        }
+      } else {
+        updatedFormData.duration = "";
+      }
+    }
+    
+    setFormData(updatedFormData);
   };
 
   const handlePhotos = (e) => {
@@ -224,11 +279,29 @@ const GiverForm = () => {
         return;
       }
 
+      // Validate dates
+      if (!formData.startDate || !formData.endDate) {
+        alert("Please select both start and end dates");
+        setLoading(false);
+        return;
+      }
+
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      if (endDate <= startDate) {
+        alert("End date must be after start date");
+        setLoading(false);
+        return;
+      }
+
       const form = new FormData();
       form.append("title", formData.title);
       form.append("location", formData.location);
       form.append("amount", formData.amount);
       form.append("duration", formData.duration);
+      form.append("startDate", formData.startDate);
+      form.append("endDate", formData.endDate);
       form.append("description", formData.description);
       form.append("giverId", giverId);
 
@@ -247,13 +320,23 @@ const GiverForm = () => {
         alert(data.message || "Something went wrong while creating the listing");
         if (res.status === 400 && data.message) {
           // If it's a validation error (like already has listing), navigate back
-          navigate("/giver");
+          const username = sessionStorage.getItem("username");
+          if (username) {
+            navigate(`/${username}/listings`);
+          } else {
+            navigate("/login");
+          }
         }
         return;
       }
 
       alert("Listing created successfully! 🎉");
-      navigate("/giver");
+      const username = sessionStorage.getItem("username");
+      if (username) {
+        navigate(`/${username}/listings`);
+      } else {
+        navigate("/login");
+      }
     } catch (err) {
       console.error("Error creating listing:", err);
       alert("Something went wrong. Please try again.");
@@ -367,9 +450,49 @@ const GiverForm = () => {
                       name="duration"
                       className="form-control"
                       value={formData.duration}
+                      readOnly
+                      style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed" }}
+                      placeholder="Auto-calculated from dates"
+                    />
+                    <small className="text-muted">Automatically calculated from start and end dates</small>
+                  </div>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={6}>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ color: "#333" }}>
+                      Sublease Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      className="form-control"
+                      value={formData.startDate}
                       onChange={handleChange}
-                      placeholder="e.g., 6"
-                      min="1"
+                      min={new Date().toISOString().split('T')[0]}
+                      required
+                    />
+                  </div>
+                </Col>
+
+                <Col md={6}>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold" style={{ color: "#333" }}>
+                      Sublease End Date *
+                    </label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      className="form-control"
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      min={
+                        formData.startDate 
+                          ? new Date(new Date(formData.startDate).getTime() + 86400000).toISOString().split('T')[0] // Next day after start
+                          : new Date().toISOString().split('T')[0]
+                      }
                       required
                     />
                   </div>

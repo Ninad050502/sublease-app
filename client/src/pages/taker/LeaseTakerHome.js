@@ -312,12 +312,20 @@
 import React from "react";
 import { Button, Container } from "react-bootstrap";
 import LeaseTakerNav from "./LeaseTakerNav";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const LeaseTakerHome = () => {
   const navigate = useNavigate();
+  const { username } = useParams();
+  const currentUsername = sessionStorage.getItem("username") || username;
 
-  const handleSearchClick = () => navigate("/available-leases");
+  const handleSearchClick = () => {
+    if (currentUsername) {
+      navigate(`/${currentUsername}/browse`);
+    } else {
+      navigate("/login");
+    }
+  };
 
   return (
     <div style={{ background: "rgba(255, 255, 255, 0.95)", minHeight: "100vh" }}>

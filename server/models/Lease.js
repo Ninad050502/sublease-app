@@ -21,9 +21,11 @@ const leaseSchema = new mongoose.Schema({
   location: { type: String, required: true },
   amount: { type: Number, required: true },
   duration: { type: Number, required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
   description: { type: String },
   giver: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  photos: [String],   // ✔ added
+  photos: [String],
   createdAt: { type: Date, default: Date.now },
 });
 

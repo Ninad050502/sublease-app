@@ -153,11 +153,13 @@
 // export default GiverNav;
 import React, { useEffect, useState } from "react";
 import { Navbar, Nav, Container } from "react-bootstrap";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 
 const GiverNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { username } = useParams();
+  const currentUsername = sessionStorage.getItem("username") || username;
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasListing, setHasListing] = useState(false);
@@ -214,7 +216,7 @@ const GiverNav = () => {
       <Container>
         <Navbar.Brand
           as={Link}
-          to="/giver"
+          to={currentUsername ? `/${currentUsername}/listings` : "/login"}
           style={{
             fontWeight: "700",
             fontSize: "1.5rem",
@@ -232,10 +234,10 @@ const GiverNav = () => {
           <Nav className="ms-auto align-items-center">
             <Nav.Link
               as={Link}
-              to="/giver"
+              to={currentUsername ? `/${currentUsername}/listings` : "/login"}
               style={{
-                color: location.pathname === "/giver" ? "#667eea" : "#333",
-                fontWeight: location.pathname === "/giver" ? "600" : "400",
+                color: location.pathname.includes("/listings") ? "#667eea" : "#333",
+                fontWeight: location.pathname.includes("/listings") ? "600" : "400",
                 textDecoration: "none",
               }}
             >
@@ -245,10 +247,10 @@ const GiverNav = () => {
             {!hasListing && (
               <Nav.Link
                 as={Link}
-                to="/giver/form"
+                to={currentUsername ? `/${currentUsername}/listings/create` : "/login"}
                 style={{
-                  color: location.pathname === "/giver/form" ? "#667eea" : "#333",
-                  fontWeight: location.pathname === "/giver/form" ? "600" : "400",
+                  color: location.pathname.includes("/listings/create") ? "#667eea" : "#333",
+                  fontWeight: location.pathname.includes("/listings/create") ? "600" : "400",
                   textDecoration: "none",
                 }}
               >
@@ -258,11 +260,11 @@ const GiverNav = () => {
 
             <Nav.Link
               as={Link}
-              to="/giver/notifications"
+              to={currentUsername ? `/${currentUsername}/notifications` : "/login"}
               className="position-relative"
               style={{
-                color: location.pathname === "/giver/notifications" ? "#667eea" : "#333",
-                fontWeight: location.pathname === "/giver/notifications" ? "600" : "400",
+                color: location.pathname.includes("/notifications") ? "#667eea" : "#333",
+                fontWeight: location.pathname.includes("/notifications") ? "600" : "400",
                 textDecoration: "none",
               }}
             >

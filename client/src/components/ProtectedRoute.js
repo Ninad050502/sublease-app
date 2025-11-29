@@ -36,11 +36,13 @@
 // export default ProtectedRoute;
 
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
 const ProtectedRoute = ({ allowedRoles, children }) => {
+  const { username } = useParams();
   const token = sessionStorage.getItem("token");
   const role = sessionStorage.getItem("role");
+  const currentUsername = sessionStorage.getItem("username");
 
   // Still loading sessionStorage
   if (token === null || role === null) {
@@ -51,8 +53,23 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Verify the username in URL matches logged-in user
+  if (username && username !== currentUsername) {
+    // Redirect to correct user's route
+    if (role === "giver") {
+      return <Navigate to={`/${currentUsername}/listings`} replace />;
+    } else {
+      return <Navigate to={`/${currentUsername}/browse`} replace />;
+    }
+  }
+
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to={role === "giver" ? "/giver" : "/taker"} replace />;
+    // Redirect to correct user's route based on role
+    if (role === "giver") {
+      return <Navigate to={`/${currentUsername}/listings`} replace />;
+    } else {
+      return <Navigate to={`/${currentUsername}/browse`} replace />;
+    }
   }
 
   return children;

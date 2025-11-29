@@ -9,6 +9,16 @@ const notificationSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
+  username: { 
+    type: String, 
+    unique: true, 
+    required: true,
+    lowercase: true,
+    trim: true,
+    match: [/^[a-z0-9_-]+$/, "Username can only contain lowercase letters, numbers, hyphens, and underscores"],
+    minlength: [3, "Username must be at least 3 characters"],
+    maxlength: [30, "Username cannot exceed 30 characters"]
+  },
   role: { type: String, enum: ["giver", "taker"] },
   
   // Giver listings

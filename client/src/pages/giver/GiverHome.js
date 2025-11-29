@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Spinner } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import GiverNav from "./GiverNav";
 
 const GiverHome = () => {
   const [leases, setLeases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const username = sessionStorage.getItem("username");
 
   const fetchMyLeases = async () => {
     try {
@@ -66,9 +69,12 @@ const GiverHome = () => {
             <div style={{ fontSize: "4rem", marginBottom: "20px" }}>🏠</div>
             <h4 style={{ color: "#666", marginBottom: "12px" }}>No Listings Yet</h4>
             <p className="text-muted mb-4">Start by creating your first sublease listing!</p>
-            <a href="/giver/form" className="btn btn-primary">
+            <Button 
+              variant="primary"
+              onClick={() => username && navigate(`/${username}/listings/create`)}
+            >
               Create Your First Listing
-            </a>
+            </Button>
           </div>
         ) : (
           <Row>
@@ -115,6 +121,20 @@ const GiverHome = () => {
                         <i className="bi bi-calendar-check me-2" style={{ color: "#667eea" }}></i>
                         <strong>Duration:</strong> {lease.duration} {lease.duration === 1 ? "month" : "months"}
                       </div>
+                      {lease.startDate && lease.endDate && (
+                        <div className="mb-2">
+                          <i className="bi bi-calendar-range me-2" style={{ color: "#667eea" }}></i>
+                          <strong>Available:</strong> {new Date(lease.startDate).toLocaleDateString("en-US", { 
+                            month: "short", 
+                            day: "numeric", 
+                            year: "numeric" 
+                          })} - {new Date(lease.endDate).toLocaleDateString("en-US", { 
+                            month: "short", 
+                            day: "numeric", 
+                            year: "numeric" 
+                          })}
+                        </div>
+                      )}
                       {lease.description && (
                         <div className="mt-2" style={{ fontSize: "0.9rem", color: "#888" }}>
                           {lease.description.length > 80

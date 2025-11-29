@@ -1,10 +1,12 @@
 import React from "react";
 import { Navbar, Container, Nav } from "react-bootstrap";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 
 const LeaseTakerNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { username } = useParams();
+  const currentUsername = sessionStorage.getItem("username") || username;
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -24,7 +26,7 @@ const LeaseTakerNav = () => {
       <Container>
         <Navbar.Brand
           as={Link}
-          to="/taker"
+          to={currentUsername ? `/${currentUsername}/home` : "/login"}
           style={{
             fontWeight: "700",
             fontSize: "1.5rem",
@@ -41,10 +43,10 @@ const LeaseTakerNav = () => {
           <Nav className="ms-auto align-items-center">
             <Nav.Link
               as={Link}
-              to="/taker"
+              to={currentUsername ? `/${currentUsername}/home` : "/login"}
               style={{
-                color: location.pathname === "/taker" ? "#667eea" : "#333",
-                fontWeight: location.pathname === "/taker" ? "600" : "400",
+                color: location.pathname.includes("/home") ? "#667eea" : "#333",
+                fontWeight: location.pathname.includes("/home") ? "600" : "400",
                 textDecoration: "none",
               }}
             >
@@ -52,10 +54,10 @@ const LeaseTakerNav = () => {
             </Nav.Link>
             <Nav.Link
               as={Link}
-              to="/available-leases"
+              to={currentUsername ? `/${currentUsername}/browse` : "/login"}
               style={{
-                color: location.pathname === "/available-leases" ? "#667eea" : "#333",
-                fontWeight: location.pathname === "/available-leases" ? "600" : "400",
+                color: location.pathname.includes("/browse") ? "#667eea" : "#333",
+                fontWeight: location.pathname.includes("/browse") ? "600" : "400",
                 textDecoration: "none",
               }}
             >
