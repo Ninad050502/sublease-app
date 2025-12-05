@@ -1,189 +1,215 @@
 import express from "express";
-import mongoose from "mongoose";
+import multer from "multer";
+import path from "path";
 import Lease from "../models/Lease.js";
 import User from "../models/User.js";
 
 const router = express.Router();
 
-/* ========================================================
-   ✅ 0. Create or Update a Lease (from Giver Form)
-======================================================== */
-router.post("/create", async (req, res) => {
+/* ======================================================
+   Multer Storage: Save photos to /uploads
+====================================================== */
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads");
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+/* ======================================================
+   CREATE NEW LISTING WITH MULTIPLE PHOTOS
+   POST /api/giver/create
+   NOTE: A giver can only have ONE listing at a time
+====================================================== */
+router.post("/create", upload.array("photos", 10), async (req, res) => {
   try {
-    const { title, location, amount, duration, description, giverId } = req.body;
+    const { title, location, amount, duration, startDate, endDate, description, giverId } = req.body;
 
     if (!giverId) {
       return res.status(400).json({ message: "Missing giverId" });
     }
 
-    console.log("🧾 Creating/updating lease for giver:", giverId);
-
-    let lease = await Lease.findOne({ giver: giverId });
-
-    if (lease) {
-      lease.title = title;
-      lease.location = location;
-      lease.amount = amount;
-      lease.duration = duration;
-      lease.description = description;
-      await lease.save();
-
-      console.log("✏️ Updated existing lease for giver:", giverId);
-      return res.json({ message: "Lease updated successfully", lease });
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start date and end date are required" });
     }
 
-    lease = new Lease({
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: "Invalid date format" });
+    }
+
+    if (start < today) {
+      return res.status(400).json({ message: "Start date cannot be in the past" });
+    }
+
+    if (end <= start) {
+      return res.status(400).json({ message: "End date must be after start date" });
+    }
+
+    // Check if giver already has a listing
+    const existingLeases = await Lease.find({ giver: giverId });
+    if (existingLeases.length > 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "You already have an active listing. Please delete your existing listing before creating a new one." 
+      });
+    }
+
+    const photoPaths =
+      req.files?.map((file) => "/uploads/" + file.filename) || [];
+
+    // Create lease
+    const lease = new Lease({
       title,
       location,
-      amount,
-      duration,
+      amount: Number(amount),
+      duration: Number(duration),
+      startDate: start,
+      endDate: end,
       description,
       giver: giverId,
+      photos: photoPaths,
     });
+
     await lease.save();
 
-    console.log("✅ Created new lease for giver:", giverId);
-    res.status(201).json({ message: "Lease created successfully", lease });
+    // Push lease into giver listings
+    await User.findByIdAndUpdate(giverId, {
+      $push: { listings: lease._id },
+    });
+
+    res.status(201).json({ success: true, lease });
   } catch (err) {
-    console.error("🔥 Error creating/updating lease:", err);
+    console.error("Error creating lease:", err);
     res.status(500).json({ message: "Error creating lease" });
   }
 });
 
-/* ========================================================
-   ✅ 1. Get Giver Status
-======================================================== */
-router.get("/:giverId/status", async (req, res) => {
+/* ======================================================
+   GET ALL LISTINGS FOR A GIVER
+   GET /api/giver/my-leases/:giverId
+====================================================== */
+router.get("/my-leases/:giverId", async (req, res) => {
   try {
-    const { giverId } = req.params;
-    console.log("📡 Fetching status for giver:", giverId);
+    const leases = await Lease.find({ giver: req.params.giverId }).sort({
+      createdAt: -1,
+    });
+    res.json(leases);
+  } catch (err) {
+    console.error("Error fetching leases:", err);
+    res.status(500).json({ message: "Error fetching leases" });
+  }
+});
 
-    const leases = await Lease.find({ giver: giverId });
-
-    if (!leases || leases.length === 0) {
-      return res.json({ status: "partial" });
+/* ======================================================
+   DELETE A LEASE LISTING
+   DELETE /api/giver/delete/:leaseId
+====================================================== */
+router.delete("/delete/:leaseId", async (req, res) => {
+  try {
+    const lease = await Lease.findById(req.params.leaseId);
+    
+    if (!lease) {
+      return res.status(404).json({ message: "Lease not found" });
     }
 
-    const hasOffers = leases.some((l) => l.offers && l.offers.length > 0);
-    if (hasOffers) return res.json({ status: "offers" });
+    const giverId = lease.giver;
 
-    return res.json({ status: "complete" });
-  } catch (err) {
-    console.error("🔥 Error fetching giver status:", err);
-    res.status(500).json({ message: "Error fetching giver status" });
-  }
-});
+    // Remove lease from database
+    await Lease.findByIdAndDelete(req.params.leaseId);
 
-/* ========================================================
-   ✅ 2. Get All Offers for a Giver’s Leases
-======================================================== */
-router.get("/:giverId/offers", async (req, res) => {
-  try {
-    const { giverId } = req.params;
-
-    const leases = await Lease.find({ giver: giverId })
-      .populate("offers.taker", "email role")
-      .exec();
-
-    const offers = leases.flatMap((lease) =>
-      lease.offers.map((offer) => ({
-        _id: offer._id,
-        leaseId: lease._id,
-        leaseTitle: lease.title,
-        taker: offer.taker,
-        status: offer.status,
-        message: offer.message || "",
-        createdAt: offer.createdAt,
-      }))
-    );
-
-    res.json(offers);
-  } catch (err) {
-    console.error("🔥 Error fetching offers:", err);
-    res.status(500).json({ message: "Error fetching offers" });
-  }
-});
-
-/* ========================================================
-   ✅ 3. Accept Offer
-======================================================== */
-router.post("/offer/:leaseId/accept/:offerId", async (req, res) => {
-  try {
-    const { leaseId, offerId } = req.params;
-    console.log(`📩 Accepting offer ${offerId} for lease ${leaseId}`);
-
-    const lease = await Lease.findById(leaseId);
-    if (!lease) return res.status(404).json({ message: "Lease not found" });
-
-    let acceptedTakerId = null;
-
-    lease.offers.forEach((offer) => {
-      if (offer._id.toString() === offerId) {
-        offer.status = "accepted";
-        acceptedTakerId = offer.taker;
-        lease.taker = offer.taker;
-        lease.isAvailable = false;
-      } else {
-        offer.status = "rejected";
-      }
+    // Remove lease from giver's listings array
+    await User.findByIdAndUpdate(giverId, {
+      $pull: { listings: req.params.leaseId },
     });
 
-    await lease.save();
-
-    if (acceptedTakerId) {
-      const objectId = new mongoose.Types.ObjectId(acceptedTakerId);
-      const updateResult = await User.updateOne(
-        { _id: objectId },
-        { $set: { currentLease: leaseId } }
-      );
-
-      if (updateResult.modifiedCount === 1) {
-        console.log(`✅ Updated taker ${acceptedTakerId} with lease ${leaseId}`);
-      } else {
-        console.warn(`⚠️ No user updated for taker ${acceptedTakerId}`);
-      }
-
-      // Reconfirm write success
-      const taker = await User.findById(objectId);
-      console.log("🔍 Taker currentLease after update:", taker.currentLease);
-    }
-
-    res.json({ message: "Offer accepted successfully!" });
+    res.json({ success: true, message: "Lease deleted successfully" });
   } catch (err) {
-    console.error("🔥 Error accepting offer:", err);
-    res.status(500).json({ message: "Error accepting offer" });
+    console.error("Error deleting lease:", err);
+    res.status(500).json({ message: "Error deleting lease" });
   }
-
-  // Reject all other offers by this taker across other leases
-  await Lease.updateMany(
-    { "offers.taker": acceptedTakerId, _id: { $ne: leaseId } },
-    { $set: { "offers.$[elem].status": "rejected" } },
-    { arrayFilters: [{ "elem.taker": acceptedTakerId }] }
-  );
-  console.log(`🚫 Rejected all other offers from taker ${acceptedTakerId}`);
-
 });
 
-/* ========================================================
-   ✅ 4. Reject Offer
-======================================================== */
-router.post("/offer/:leaseId/reject/:offerId", async (req, res) => {
+/* ======================================================
+   GET NOTIFICATIONS
+   GET /api/giver/:giverId/notifications
+====================================================== */
+router.get("/:giverId/notifications", async (req, res) => {
   try {
-    const { leaseId, offerId } = req.params;
+    const giver = await User.findById(req.params.giverId);
 
-    const lease = await Lease.findById(leaseId);
-    if (!lease) return res.status(404).json({ message: "Lease not found" });
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
 
-    const offer = lease.offers.id(offerId);
-    if (!offer) return res.status(404).json({ message: "Offer not found" });
+    const sorted = [...giver.notifications].sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
-    offer.status = "rejected";
-    await lease.save();
-
-    res.json({ message: "Offer rejected successfully." });
+    res.json(sorted);
   } catch (err) {
-    console.error("🔥 Error rejecting offer:", err);
-    res.status(500).json({ message: "Error rejecting offer" });
+    console.error("Error fetching notifications:", err);
+    res.status(500).json({ message: "Failed to fetch notifications" });
+  }
+});
+
+/* ======================================================
+   MARK ALL NOTIFICATIONS AS READ
+   POST /api/giver/:giverId/notifications/mark-read
+====================================================== */
+router.post("/:giverId/notifications/mark-read", async (req, res) => {
+  try {
+    const giver = await User.findById(req.params.giverId);
+
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
+
+    giver.notifications.forEach((n) => {
+      n.isRead = true;
+    });
+
+    await giver.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error marking notifications read:", err);
+    res.status(500).json({ message: "Failed to mark as read" });
+  }
+});
+
+/* ======================================================
+   DELETE SINGLE NOTIFICATION
+   DELETE /api/giver/:giverId/notifications/:notificationId
+====================================================== */
+router.delete("/:giverId/notifications/:notificationId", async (req, res) => {
+  try {
+    const { giverId, notificationId } = req.params;
+
+    const giver = await User.findByIdAndUpdate(
+      giverId,
+      { $pull: { notifications: { _id: notificationId } } },
+      { new: true }
+    );
+
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting notification:", err);
+    res.status(500).json({ message: "Failed to delete notification" });
   }
 });
 

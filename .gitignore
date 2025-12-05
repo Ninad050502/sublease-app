@@ -3,9 +3,64 @@ node_modules/
 npm-debug.log
 .env
 
+#Folders
+uploads/
+
 # Build files
 dist/
 build/
 
 # OS stuff
 .DS_Store
+work_to_do.txt
+
+
+#Not needed files
+venv/
+.vscode/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.production
+.env.test
+.env
+giver_flowchart.md
+taker_flowchart.md
+project_flowchart.md
+flowchart_instructions.md
+report.md
+report.pdf
+report.docx
+report.docx
+giver_flowchart.png
+taker_flowchart.png
+project_flowchart.png
+flowchart_instructions.md
+report.md
+report.pdf
+report.docx
+report.docx
+giver_flowchart.png
+taker_flowchart.png
+project_flowchart.png
+Directed_Studies_Report.docx
+Directed_Studies_Report.pdf
+Directed_Studies_Report.docx
+giverchart-1.png
+takerchart-1.png
+projectchart-1.png
+giverchart-2.png
+takerchart-2.png
+projectchart-2.png
+giverchart-3.png
+takerchart-3.png
+projectchart-3.png
+giverchart-4.png
+takerchart-4.png
+projectchart-4.png
+flowchart-1.png
+giverchart2-1.png
+takerchart2-1.png
+Phand_Atharva_Project_Report_v2.txt

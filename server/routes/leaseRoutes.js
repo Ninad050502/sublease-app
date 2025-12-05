@@ -1,191 +1,218 @@
-// // import express from "express";
-// // import Lease from "../models/Lease.js";
-
-// // const router = express.Router();
-
-// // /**
-// //  * ✅ GET /api/leases
-// //  * Returns all available leases, optionally filtered by location (case-insensitive)
-// //  * Sorted by amount (lowest → highest)
-// //  *
-// //  * Example calls:
-// //  *   /api/leases
-// //  *   /api/leases?location=Texas
-// //  */
-// // router.get("/", async (req, res) => {
-// //   try {
-// //     const { location } = req.query;
-
-// //     // Build query
-// //     const query = { isAvailable: true };
-// //     if (location) {
-// //       query.location = { $regex: location, $options: "i" }; // case-insensitive search
-// //     }
-
-// //     console.log("📥 [GET] /api/leases — query:", query);
-
-// //     // Sort by lowest rent
-// //     const leases = await Lease.find(query).sort({ amount: 1 });
-
-// //     if (!leases || leases.length === 0) {
-// //       console.log("ℹ️ No matching leases found");
-// //       return res.status(200).json([]);
-// //     }
-
-// //     res.status(200).json(leases);
-// //   } catch (error) {
-// //     console.error("🔥 Error fetching leases:", error);
-// //     res.status(500).json({
-// //       message: "Error fetching leases",
-// //       error: error.message,
-// //     });
-// //   }
-// // });
-
-// // export default router;
-// import express from "express";
-// import Lease from "../models/Lease.js";
-// import User from "../models/User.js";
-
-// const router = express.Router();
-
-// // ✅ Taker makes an offer for a lease
-// router.post("/offer/:leaseId", async (req, res) => {
-//   try {
-//     const { leaseId } = req.params;
-//     const { userId } = req.body;
-
-//     const lease = await Lease.findById(leaseId);
-//     if (!lease || !lease.isAvailable)
-//       return res.status(400).json({ message: "Lease not available" });
-
-//     // check if taker already offered
-//     const existingOffer = lease.offers.find(
-//       (o) => o.taker.toString() === userId
-//     );
-//     if (existingOffer)
-//       return res.status(400).json({ message: "You have already made an offer for this lease." });
-
-//     lease.offers.push({ taker: userId });
-//     await lease.save();
-
-//     res.json({ message: "Offer submitted successfully!" });
-//   } catch (err) {
-//     console.error("Error creating offer:", err);
-//     res.status(500).json({ message: "Server error while submitting offer" });
-//   }
-// });
-
-// export default router;
-// import express from "express";
-// import Lease from "../models/Lease.js";
-
-// const router = express.Router();
-
-// /* ========================================================
-//    ✅ GET /api/leases
-//    - Optional ?location= query filter
-//    - Returns only available leases
-// ======================================================== */
-// router.get("/", async (req, res) => {
-//   try {
-//     const { location } = req.query;
-
-//     const query = { isAvailable: true };
-//     if (location && location.trim() !== "") {
-//       // Case-insensitive partial match
-//       query.location = { $regex: location, $options: "i" };
-//     }
-
-//     console.log("📡 Lease search query:", query);
-
-//     const leases = await Lease.find(query).sort({ amount: 1 });
-
-//     console.log(`✅ Found ${leases.length} leases`);
-//     res.json(leases);
-//   } catch (err) {
-//     console.error("🔥 Error fetching leases:", err);
-//     res.status(500).json({ message: "Error fetching leases" });
-//   }
-// });
-
-// export default router;
-
 import express from "express";
 import Lease from "../models/Lease.js";
 
 const router = express.Router();
 
 /* ========================================================
-   ✅ GET  /api/leases
-   Optional ?location= query
+   GET /api/leases/random
+   Returns a random sample of leases (up to 12)
+======================================================== */
+router.get("/random", async (req, res) => {
+  try {
+    // Get a random sample of leases (up to 12)
+    const sampleSize = 12;
+    const totalLeases = await Lease.countDocuments();
+    
+    if (totalLeases === 0) {
+      return res.json([]);
+    }
+
+    // Get random leases using aggregation
+    const randomLeases = await Lease.aggregate([
+      { $sample: { size: Math.min(sampleSize, totalLeases) } }
+    ]);
+
+    // Sort by price (cheapest first) for consistency
+    randomLeases.sort((a, b) => {
+      if (a.amount !== b.amount) return a.amount - b.amount;
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+
+    res.json(randomLeases);
+  } catch (err) {
+    console.error("🔥 Error fetching random leases:", err);
+    res.status(500).json({ message: "Error fetching random leases" });
+  }
+});
+
+/* ========================================================
+   GET /api/leases
+   Optional query params:
+   - location (string)
+   - startDate (ISO date string)
+   - endDate (ISO date string)
+   - sort: "cheapest" | "newest"
+   
+   Logic:
+   1. If dates provided, find exact matches (overlapping dates) first
+   2. If no exact matches or location provided, show area matches sorted by price
+   3. Return both exact matches and area matches with search info
 ======================================================== */
 router.get("/", async (req, res) => {
   try {
-    const { location } = req.query;
-    const query = { isAvailable: true };
-    if (location && location.trim() !== "") {
-      query.location = { $regex: location, $options: "i" };
+    const { location, startDate, endDate, sort } = req.query;
+
+    let exactMatches = [];
+    let areaMatches = [];
+    let searchInfo = null;
+
+    // If dates are provided, try to find exact matches first
+    if (startDate && endDate) {
+      const searchStart = new Date(startDate);
+      const searchEnd = new Date(endDate);
+
+      // Build query for exact date matches (overlapping dates)
+      const exactQuery = {
+        startDate: { $lte: searchEnd },
+        endDate: { $gte: searchStart }
+      };
+
+      // Add location filter if provided
+      if (location && location.trim() !== "") {
+        exactQuery.location = { $regex: location, $options: "i" };
+      }
+
+      // Find exact matches (dates overlap)
+      exactMatches = await Lease.find(exactQuery);
+
+      // If location provided, also find area matches (same location, different dates)
+      if (location && location.trim() !== "") {
+        const areaQuery = {
+          location: { $regex: location, $options: "i" },
+          _id: { $nin: exactMatches.map(l => l._id) } // Exclude exact matches
+        };
+        areaMatches = await Lease.find(areaQuery);
+      }
+
+      searchInfo = {
+        exactMatches: exactMatches.length,
+        areaMatches: areaMatches.length,
+        hasExactMatches: exactMatches.length > 0
+      };
+    } else {
+      // No dates provided, just search by location
+      const query = {};
+      if (location && location.trim() !== "") {
+        query.location = { $regex: location, $options: "i" };
+      }
+      areaMatches = await Lease.find(query);
+      searchInfo = {
+        exactMatches: 0,
+        areaMatches: areaMatches.length,
+        hasExactMatches: false
+      };
     }
 
-    console.log("📡 Searching leases with query:", query);
-    const leases = await Lease.find(query).sort({ amount: 1 });
-    res.json(leases);
+    // Combine results: exact matches first, then area matches
+    let allLeases = [...exactMatches, ...areaMatches];
+
+    // Sort the combined results
+    let sortOption = {};
+    if (sort === "newest") {
+      sortOption = { createdAt: -1 };
+    } else {
+      // default: cheapest first, then oldest first
+      sortOption = { amount: 1, createdAt: 1 };
+    }
+
+    // Sort exact matches and area matches separately, then combine
+    exactMatches.sort((a, b) => {
+      if (sort === "newest") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else {
+        if (a.amount !== b.amount) return a.amount - b.amount;
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+    });
+
+    areaMatches.sort((a, b) => {
+      if (sort === "newest") {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      } else {
+        if (a.amount !== b.amount) return a.amount - b.amount;
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+    });
+
+    allLeases = [...exactMatches, ...areaMatches];
+
+    // If no location or dates, return all leases sorted
+    if (!location && !startDate && !endDate) {
+      allLeases = await Lease.find({}).sort(sortOption);
+      searchInfo = {
+        exactMatches: 0,
+        areaMatches: allLeases.length,
+        hasExactMatches: false
+      };
+    }
+
+    res.json({
+      leases: allLeases,
+      searchInfo: searchInfo || {
+        exactMatches: 0,
+        areaMatches: allLeases.length,
+        hasExactMatches: false
+      }
+    });
   } catch (err) {
     console.error("🔥 Error fetching leases:", err);
     res.status(500).json({ message: "Error fetching leases" });
   }
 });
 
-/* ========================================================
-   ✅ POST /api/leases/offer/:leaseId
-   ->  Taker makes an offer for a lease
-======================================================== */
-router.post("/offer/:leaseId", async (req, res) => {
+/* Get single lease by ID (useful if needed later) */
+router.get("/:id", async (req, res) => {
   try {
-    const { leaseId } = req.params;
-    const { userId } = req.body;
+    const lease = await Lease.findById(req.params.id).populate("giver", "email");
+    if (!lease) return res.status(404).json({ message: "Lease not found" });
+    res.json(lease);
+  } catch (err) {
+    console.error("🔥 Error fetching lease:", err);
+    res.status(500).json({ message: "Error fetching lease" });
+  }
+});
 
-    console.log("📨 Offer request for lease:", leaseId, "from taker:", userId);
+router.post("/contact/:leaseId", async (req, res) => {
+  try {
+    const { takerEmail, takerId } = req.body;
 
-    // --- Basic validation ---
-    if (!userId) {
-      return res.status(400).json({ message: "Missing taker userId" });
+    if (!takerEmail || !takerId) {
+      return res.status(400).json({ message: "Missing taker information" });
     }
 
-    const lease = await Lease.findById(leaseId);
-    if (!lease) {
-      return res.status(404).json({ message: "Lease not found" });
-    }
-    if (!lease.isAvailable) {
-      return res.status(400).json({ message: "Lease is not available" });
-    }
+    const lease = await Lease.findById(req.params.leaseId).populate("giver");
+    if (!lease) return res.status(404).json({ message: "Lease not found" });
 
-    // --- Prevent duplicate offers from same taker ---
-    const alreadyOffered = lease.offers.some(
-      (o) => o.taker.toString() === userId
+    const giver = lease.giver;
+
+    // Check EXACT duplicate (safer)
+    const alreadyExists = giver.notifications.some(
+      (note) =>
+        note.message.includes(takerEmail) &&
+        note.message.includes(`"${lease.title}"`)
     );
-    if (alreadyOffered) {
-      return res.status(400).json({
-        message: "You have already made an offer for this lease.",
+
+    if (alreadyExists) {
+      return res.json({
+        alreadySent: true,
+        message: "Notification already sent earlier",
       });
     }
 
-    // --- Add new offer ---
-    lease.offers.push({
-      taker: userId,
-      message: req.body.message || "",
-      status: "pending",
+    // Create notification
+    giver.notifications.push({
+      message: `${takerEmail} is interested in your listing "${lease.title}".`,
+      takerId
     });
 
-    await lease.save();
-    console.log("✅ Offer saved successfully for lease:", leaseId);
+    await giver.save();
 
-    res.json({ message: "Offer submitted successfully!" });
+    return res.json({ success: true, message: "Notification sent to giver!" });
   } catch (err) {
-    console.error("🔥 Error creating offer:", err);
-    res.status(500).json({ message: "Server error while submitting offer" });
+    console.error("❌ Error sending notification:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
+
 
 export default router;
