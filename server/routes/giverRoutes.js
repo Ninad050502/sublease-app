@@ -188,4 +188,29 @@ router.post("/:giverId/notifications/mark-read", async (req, res) => {
   }
 });
 
+/* ======================================================
+   DELETE SINGLE NOTIFICATION
+   DELETE /api/giver/:giverId/notifications/:notificationId
+====================================================== */
+router.delete("/:giverId/notifications/:notificationId", async (req, res) => {
+  try {
+    const { giverId, notificationId } = req.params;
+
+    const giver = await User.findByIdAndUpdate(
+      giverId,
+      { $pull: { notifications: { _id: notificationId } } },
+      { new: true }
+    );
+
+    if (!giver) {
+      return res.status(404).json({ message: "Giver not found" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting notification:", err);
+    res.status(500).json({ message: "Failed to delete notification" });
+  }
+});
+
 export default router;

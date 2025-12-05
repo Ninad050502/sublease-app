@@ -110,7 +110,7 @@
 
 // export default NotificationsPage;
 import React, { useEffect, useState } from "react";
-import { Container, Card } from "react-bootstrap";
+import { Container, Card, Button } from "react-bootstrap";
 import GiverNav from "./GiverNav";
 
 const NotificationsPage = () => {
@@ -138,6 +138,34 @@ const NotificationsPage = () => {
     fetchNotifications();
   }, []);
 
+  const handleDelete = async (notificationId) => {
+    const userId = sessionStorage.getItem("userId");
+    if (!userId) return;
+
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this notification?"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/giver/${userId}/notifications/${notificationId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to delete notification");
+      }
+
+      // Remove deleted notification from UI
+      setNotifications((prev) => prev.filter((n) => n._id !== notificationId));
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+      alert("Could not delete notification. Please try again.");
+    }
+  };
+
   return (
     <div style={{ background: "rgba(255, 255, 255, 0.95)", minHeight: "100vh" }}>
       <GiverNav />
@@ -161,9 +189,9 @@ const NotificationsPage = () => {
           </div>
         ) : (
           <div>
-            {notifications.map((note, index) => (
+            {notifications.map((note) => (
               <Card
-                key={index}
+                key={note._id}
                 className="mb-3 shadow-sm"
                 style={{
                   borderLeft: "4px solid #667eea",
@@ -217,6 +245,15 @@ const NotificationsPage = () => {
                           minute: "2-digit",
                         })}
                       </small>
+                    </div>
+                    <div className="ms-3">
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleDelete(note._id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </Card.Body>
